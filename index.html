@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="dark">
-<title>Карта аниме</title>
+<title>Anime Universe</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -276,7 +276,7 @@
 
 <header>
   <div class="eyebrow">Система // Карта связей</div>
-  <h1>Карта аниме</h1>
+  <h1>Anime Universe</h1>
   <div class="sub" id="sub"></div>
   <div class="search">
     <span class="icon">◈</span>
@@ -986,7 +986,7 @@ function select(n){
   flyTo(n.x,n.y,Math.max(cam.s,1.0));
   const rel=relListOf(n);
   const REL_MAX=24;
-  const coreTag=n.slug===CENTER_SLUG?" · ЯДРО СЕТИ":(PILLARS.includes(n.slug)?" · СТОЛП ЯДРА":"");
+  const coreTag=n.isCore?" · ЛЕГЕНДА":"";
   document.getElementById("panelBody").innerHTML=`
     <div class="poster"><img src="img/${n.slug}.jpg" alt=""
       onload="this.classList.add('on')"
@@ -1157,7 +1157,7 @@ function draw(now){
     const cf=Math.max(10,Math.min(30,coreR*.06));
     ctx.font=cf+"px 'Russo One',sans-serif";
     ctx.fillStyle="rgba(251,191,36,.42)";
-    ctx.fillText("ЯДРО СЕТИ",cx,cy-coreR-10);
+    ctx.fillText("ЛЕГЕНДЫ",cx,cy-coreR-10);
   }
   ctx.restore();
 
