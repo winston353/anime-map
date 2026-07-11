@@ -6,6 +6,9 @@
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="dark">
 <title>Anime Universe</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Russo+One&family=Manrope:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -332,7 +335,7 @@ window.onerror=function(msg,src,line){
   if(el) el.innerHTML='<span style="color:#fb7185">ошибка: '+msg+' ('+(src||"").split("/").pop()+':'+line+')</span>';
 };
 </script>
-<script src="data.js?v=3"></script>
+<script src="data.js?v=4"></script>
 <script>
 "use strict";
 if(typeof JUTSU_RAW==="undefined"||!Array.isArray(JUTSU_RAW)||JUTSU_RAW.length<100){
@@ -415,7 +418,7 @@ const nodes = JUTSU_RAW.map(a=>{
   if(isCore) r += 5;
   return {
     slug:a.slug, ru:a.ru, orig:a.orig, imgRemote:a.img, lines:a.lines,
-    desc:a.desc, ongoing:!!a.ongoing,
+    desc:a.desc, ongoing:!!a.ongoing, am:a.am||null,
     year:(a.years&&a.years.length)?Math.min(...a.years):0,
     c, gm, tm, tokens, imp, eps, films, isCore,
     x:0,y:0,vx:0,vy:0,r,
@@ -1040,7 +1043,7 @@ function select(n){
     <div class="score-line"><span>Рейтинг MAL</span><b id="scoreVal">…</b></div>
     <div class="bar"><i id="scoreBar" style="width:0"></i></div>
     ${n.desc?`<p class="p-desc">${n.desc}</p>`:""}
-    <a class="watch" href="https://jut.su/${n.slug}/" target="_blank" rel="noopener">▶ СМОТРЕТЬ НА JUT.SU</a>
+    <a class="watch" href="${n.am?`https://ru.yummyani.me${n.am}`:`https://ru.yummyani.me/catalog?q=${encodeURIComponent(n.ru)}`}" target="_blank" rel="noopener">▶ СМОТРЕТЬ НА YUMMY ANIME</a>
     <div class="rel-cap">◈ Связи · ${rel.length}</div>
     ${rel.slice(0,REL_MAX).map(r=>`
       <button class="rel" data-id="${r.slug}">
