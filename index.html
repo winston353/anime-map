@@ -101,9 +101,42 @@
   }
   .thumb img{width:100%;height:100%;object-fit:cover;display:block}
 
+  /* ---------- профиль ---------- */
+  .pf{
+    position:fixed;top:18px;right:20px;z-index:12;
+    display:flex;align-items:center;gap:8px;
+    padding:7px 13px;background:rgba(10,14,30,.82);border:1px solid var(--line);
+    color:var(--ink);font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+    cursor:pointer;border-radius:2px;
+    clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px);
+    transition:.2s;max-width:190px;
+  }
+  .pf:hover{border-color:var(--arcane-soft);box-shadow:0 0 16px rgba(139,92,246,.35);color:#fff}
+  .pf img{width:20px;height:20px;border-radius:50%;flex:none}
+  .pf .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ---------- отметки ---------- */
+  .mrow{display:flex;gap:6px;margin-top:6px}
+  .mbtn{
+    flex:1;padding:7px 4px;background:rgba(124,137,176,.07);
+    border:1px solid rgba(124,137,176,.3);color:var(--muted);
+    font-family:var(--mono);font-size:10px;letter-spacing:.04em;cursor:pointer;
+    border-radius:2px;transition:.2s;white-space:nowrap;
+  }
+  .mbtn.fav{flex:0 0 40px;font-size:14px;line-height:1}
+  .mbtn:hover{border-color:var(--arcane-soft);color:var(--ink)}
+  .mbtn.on{border-color:var(--mc);color:var(--mc);background:rgba(124,137,176,.05);
+    box-shadow:0 0 10px color-mix(in srgb,var(--mc) 35%,transparent)}
+  .cab-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .cab-head img{width:46px;height:46px;border-radius:50%;border:2px solid var(--arcane);flex:none}
+  .cab-name{font-family:var(--display);font-size:16px;color:#f2f4ff}
+  .cab-mail{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:3px;word-break:break-all}
+  .cab-empty{font-size:12px;color:var(--muted);padding:2px 0 6px}
+  .cab-note{font-size:12.5px;line-height:1.6;color:#b9c3e8;margin:10px 0 14px}
+
   /* ---------- легенда ---------- */
   .legend{
-    position:fixed;top:18px;right:20px;z-index:10;
+    position:fixed;top:64px;right:20px;z-index:10;
     display:flex;flex-direction:column;gap:5px;align-items:flex-end;
   }
   .legend .cap{font-family:var(--mono);font-size:9px;letter-spacing:.28em;color:var(--muted);margin-bottom:2px}
@@ -279,6 +312,7 @@
     .chip:hover{transform:none}
     .chip .n{display:none}
     .hint{display:none}
+    .pf{top:calc(8px + env(safe-area-inset-top));right:8px;padding:6px 10px;max-width:150px}
     .hud{right:8px;bottom:calc(8px + env(safe-area-inset-bottom));gap:6px}
     .panel{width:100vw;top:auto;height:min(72vh,560px);border-left:0;border-top:1px solid var(--line);
       transform:translateY(105%)}
@@ -318,6 +352,7 @@
   </div>
 </header>
 
+<button class="pf" id="profileBtn"><span class="nm">◈ Войти</span></button>
 <div class="legend" id="legend"><div class="cap">Кластеры</div></div>
 
 <aside class="panel" id="panel">
@@ -1061,6 +1096,7 @@ function select(n){
     <div class="bar"><i id="scoreBar" style="width:0"></i></div>
     ${n.desc?`<p class="p-desc">${n.desc}</p>`:""}
     <a class="watch" href="${n.am?`https://ru.yummyani.me${n.am}`:`https://ru.yummyani.me/catalog?q=${encodeURIComponent(n.ru)}`}" target="_blank" rel="noopener">▶ СМОТРЕТЬ НА YUMMY ANIME</a>
+    <div id="mrowBox">${markRowHTML(n)}</div>
     <div class="rel-cap">◈ Связи · ${rel.length}</div>
     ${rel.slice(0,REL_MAX).map(r=>`
       <button class="rel" data-id="${r.slug}">
@@ -1071,6 +1107,7 @@ function select(n){
   `;
   panel.classList.add("open");
   panel.querySelectorAll(".rel").forEach(b=>b.onclick=()=>select(bySlug[b.dataset.id]));
+  bindMarkRow(n);
   const me=n;
   fetchScore(n).then(v=>{
     if(selectedN!==me) return;
@@ -1102,6 +1139,119 @@ function select(n){
 function closePanel(){selectedN=null;panel.classList.remove("open");}
 document.getElementById("closePanel").onclick=closePanel;
 addEventListener("keydown",e=>{if(e.key==="Escape"){closePanel();document.getElementById("drop").classList.remove("open");}});
+
+/* ============================================================
+   КАБИНЕТ: отметки, профиль, синхронизация через Firebase
+   ============================================================ */
+const MARK_COLORS={w:"#38bdf8",p:"#fbbf24",d:"#4ade80"};
+const MARK_NAMES={w:"Смотрю",p:"В планах",d:"Просмотрено"};
+let AU=null, USER=null, saveTimer=null;
+const marksKey=()=>USER?"au:marks:"+USER.uid:"au:marks:guest";
+function loadLocalMarks(k){try{return JSON.parse(lsGet(k||marksKey())||"{}")}catch(e){return{}}}
+let MARKS=loadLocalMarks("au:marks:guest");
+
+function persistMarks(){
+  lsSet(marksKey(),JSON.stringify(MARKS));
+  if(AU&&USER){
+    clearTimeout(saveTimer);
+    saveTimer=setTimeout(()=>AU.save(USER.uid,MARKS).catch(e=>console.warn("сохранение:",e)),800);
+  }
+}
+function setMark(slug,m){
+  const cur=MARKS[slug]||{};
+  if(m==="f") cur.f=cur.f?0:1;
+  else cur.s=cur.s===m?"":m;
+  if(!cur.s) delete cur.s;
+  if(!cur.f) delete cur.f;
+  if(Object.keys(cur).length) MARKS[slug]=cur; else delete MARKS[slug];
+  persistMarks();
+}
+function markRowHTML(n){
+  const mk=MARKS[n.slug]||{};
+  return `
+    <div class="rel-cap">◈ Мои отметки</div>
+    <div class="mrow">
+      ${["w","p","d"].map(m=>`<button class="mbtn${mk.s===m?" on":""}" data-m="${m}" style="--mc:${MARK_COLORS[m]}">${MARK_NAMES[m]}</button>`).join("")}
+      <button class="mbtn fav${mk.f?" on":""}" data-m="f" style="--mc:#f472b6" title="Избранное">${mk.f?"♥":"♡"}</button>
+    </div>`;
+}
+function bindMarkRow(n){
+  panel.querySelectorAll(".mbtn").forEach(b=>b.onclick=()=>{
+    setMark(n.slug,b.dataset.m);
+    const holder=document.getElementById("mrowBox");
+    if(holder){holder.innerHTML=markRowHTML(n); bindMarkRow(n);}
+  });
+}
+function updateProfileChip(){
+  const el=document.getElementById("profileBtn");
+  if(USER){
+    const nm=(USER.displayName||"профиль").split(" ")[0];
+    el.innerHTML=`${USER.photoURL?`<img src="${USER.photoURL}" alt="" referrerpolicy="no-referrer">`:""}<span class="nm">${nm}</span>`;
+  } else el.innerHTML=`<span class="nm">◈ Войти</span>`;
+}
+function openCabinet(){
+  selectedN=null;
+  const item=n=>`
+    <button class="rel" data-id="${n.slug}">
+      <span class="thumb" style="--c:${CLUSTERS[n.c].color}"><img loading="lazy" src="img/${n.slug}.jpg" alt="" onerror="this.remove()"></span>
+      <span class="rt">${n.ru}</span>
+    </button>`;
+  const section=(title,color,arr)=>`
+    <div class="rel-cap" style="color:${color}">◈ ${title} · ${arr.length}</div>
+    ${arr.length?arr.map(item).join(""):`<div class="cab-empty">пока пусто</div>`}`;
+  const bySt=st=>Object.keys(MARKS).filter(k=>MARKS[k].s===st&&bySlug[k]).map(k=>bySlug[k]);
+  const favs=Object.keys(MARKS).filter(k=>MARKS[k].f&&bySlug[k]).map(k=>bySlug[k]);
+  let head;
+  if(USER){
+    head=`
+      <div class="cab-head">
+        ${USER.photoURL?`<img src="${USER.photoURL}" alt="" referrerpolicy="no-referrer">`:""}
+        <div><div class="cab-name">${USER.displayName||"Пользователь"}</div>
+        <div class="cab-mail">${USER.email||""}</div></div>
+      </div>`;
+  } else {
+    head=`
+      <div class="cab-note">Войди через Google, чтобы отметки сохранялись в аккаунте и синхронизировались между устройствами. Пока без входа они хранятся только в этом браузере.</div>
+      <a class="watch" id="cabLogin" href="javascript:void(0)">◈ ВОЙТИ ЧЕРЕЗ GOOGLE</a>`;
+  }
+  document.getElementById("panelBody").innerHTML=`
+    ${head}
+    ${section("Смотрю",MARK_COLORS.w,bySt("w"))}
+    ${section("В планах",MARK_COLORS.p,bySt("p"))}
+    ${section("Просмотрено",MARK_COLORS.d,bySt("d"))}
+    ${section("Избранное","#f472b6",favs)}
+    ${USER?`<button class="rel" id="cabLogout" style="margin-top:12px;justify-content:center">Выйти из аккаунта</button>`:""}
+  `;
+  panel.classList.add("open");
+  panel.querySelectorAll(".rel[data-id]").forEach(b=>b.onclick=()=>select(bySlug[b.dataset.id]));
+  const lo=document.getElementById("cabLogout");
+  if(lo) lo.onclick=async()=>{ if(AU){clearTimeout(saveTimer); try{await AU.save(USER.uid,MARKS)}catch(e){} AU.logout();} closePanel(); };
+  const li=document.getElementById("cabLogin");
+  if(li) li.onclick=()=>{ if(AU) AU.login(); };
+}
+document.getElementById("profileBtn").onclick=()=>{ if(USER) openCabinet(); else if(AU) AU.login(); else openCabinet(); };
+
+addEventListener("au-ready",()=>{
+  AU=window.AU_backend;
+  AU.onUser(async u=>{
+    USER=u;
+    if(u){
+      let cloud;
+      try{cloud=await AU.load(u.uid);}catch(e){console.warn("загрузка отметок:",e); cloud=loadLocalMarks();}
+      const guest=loadLocalMarks("au:marks:guest");
+      let merged=false;
+      for(const k in guest){ if(!cloud[k]){cloud[k]=guest[k]; merged=true;} }
+      MARKS=cloud;
+      lsSet(marksKey(),JSON.stringify(MARKS));
+      if(merged) AU.save(u.uid,MARKS).catch(e=>console.warn(e));
+      lsSet("au:marks:guest","{}");
+    } else {
+      MARKS=loadLocalMarks("au:marks:guest");
+    }
+    updateProfileChip();
+    if(selectedN){const h=document.getElementById("mrowBox"); if(h){h.innerHTML=markRowHTML(selectedN); bindMarkRow(selectedN);}}
+  });
+});
 
 /* ============================================================
    ПОИСК И ЛЕГЕНДА
@@ -1351,6 +1501,21 @@ function draw(now){
     }
     ctx.globalAlpha=a;
 
+    // кольца моих отметок
+    const mk=MARKS[n.slug];
+    if(mk){
+      if(mk.s){
+        ctx.strokeStyle=hexA(MARK_COLORS[mk.s],.95);
+        ctx.lineWidth=Math.max(1.2,r*.09);
+        ctx.beginPath(); ctx.arc(x,yy,r+2.5,0,TAU); ctx.stroke();
+      }
+      if(mk.f){
+        ctx.strokeStyle=hexA("#f472b6",.9);
+        ctx.lineWidth=1.3;
+        ctx.beginPath(); ctx.arc(x,yy,r+(mk.s?6:2.5),0,TAU); ctx.stroke();
+      }
+    }
+
     const col=CLUSTERS[n.c].color;
     if(n.isCore){
       const p=RM?0:(Math.sin(now/600+n.ph)+1)/2;
@@ -1412,6 +1577,43 @@ fitView(0);
 cam.s=Math.max(cam.s,.07);
 scheduleBloom();
 requestAnimationFrame(loop);
+</script>
+<script type="module">
+/* Firebase: вход через Google + синхронизация отметок */
+import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {getFirestore,doc,getDoc,setDoc} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+const app=initializeApp({
+  apiKey:"AIzaSyASi1ogXkgPNyovSxXB_0ZBVnTvIy6Rw0o",
+  authDomain:"anime-universe-6c0a3.firebaseapp.com",
+  projectId:"anime-universe-6c0a3",
+  storageBucket:"anime-universe-6c0a3.firebasestorage.app",
+  messagingSenderId:"841003738694",
+  appId:"1:841003738694:web:8103e60eb24689d7728c47"
+});
+const auth=getAuth(app), db=getFirestore(app);
+window.AU_backend={
+  login: async()=>{
+    const p=new GoogleAuthProvider();
+    try{ await signInWithPopup(auth,p); }
+    catch(e){
+      if(e&&(e.code==="auth/popup-blocked"||e.code==="auth/operation-not-supported-in-this-environment")){
+        try{ await signInWithRedirect(auth,p); }catch(e2){ console.warn("вход:",e2); }
+      } else if(e&&e.code!=="auth/popup-closed-by-user"&&e.code!=="auth/cancelled-popup-request"){
+        console.warn("вход:",e);
+        alert("Не удалось войти: "+(e.code||e.message||e));
+      }
+    }
+  },
+  logout: ()=>signOut(auth),
+  load: async uid=>{
+    const s=await getDoc(doc(db,"users",uid));
+    return (s.exists()&&s.data().marks)||{};
+  },
+  save: (uid,marks)=>setDoc(doc(db,"users",uid),{marks},{merge:true}),
+  onUser: cb=>onAuthStateChanged(auth,cb),
+};
+window.dispatchEvent(new Event("au-ready"));
 </script>
 </body>
 </html>
