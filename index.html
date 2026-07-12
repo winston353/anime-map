@@ -244,6 +244,7 @@
     font-family:var(--display);font-size:clamp(15px,2.6vw,24px);letter-spacing:.34em;
     color:#e6e9ff;text-shadow:0 0 30px var(--arcane);text-transform:uppercase;
     opacity:0;pointer-events:none;text-align:center;padding:0 12px;
+    white-space:nowrap;
   }
   .toast.show{animation:gate 2.4s ease forwards}
 
@@ -285,6 +286,16 @@
     .panel-body{padding:14px;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
     .poster{height:124px;margin:-14px -14px 12px}
     .rel:hover{transform:none}
+    .toast{font-size:clamp(11px,4.2vw,24px);letter-spacing:.22em}
+  }
+  @keyframes gateM{
+    0%{opacity:0;letter-spacing:.5em;filter:blur(6px)}
+    22%{opacity:1;letter-spacing:.22em;filter:blur(0)}
+    78%{opacity:1}
+    100%{opacity:0;filter:blur(4px)}
+  }
+  @media (max-width:720px){
+    .toast.show{animation-name:gateM}
   }
   @media (prefers-reduced-motion: reduce){
     .panel{transition:none}
@@ -655,7 +666,7 @@ const cv=document.getElementById("cv");
 const ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1;
 function resize(){
-  DPR=Math.min(devicePixelRatio||1,2);
+  DPR=Math.min(devicePixelRatio||1,3);
   W=innerWidth; H=innerHeight;
   cv.width=W*DPR; cv.height=H*DPR;
   cv.style.width=W+"px"; cv.style.height=H+"px";
@@ -706,7 +717,7 @@ function hexA(hex,a){
   const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
   return `rgba(${r},${g},${b},${a})`;
 }
-const SPR=112, SPR_R=40; // радиус картинки внутри спрайта
+const SPR=144, SPR_R=51; // радиус картинки внутри спрайта
 function bakeSprite(n,img){
   const c=document.createElement("canvas"); c.width=c.height=SPR;
   const g=c.getContext("2d");
@@ -720,17 +731,18 @@ function bakeSprite(n,img){
   const s=Math.max(SPR_R*2/iw,SPR_R*2/ih);
   g.drawImage(img,m-iw*s/2,m-ih*s/2,iw*s,ih*s);
   g.restore();
-  g.strokeStyle=hexA(col,.95); g.lineWidth=3;
-  g.beginPath(); g.arc(m,m,SPR_R-1,0,TAU); g.stroke();
-  // мип-уровни, чтобы не масштабировать 112px в мелочь каждый кадр
-  const c56=document.createElement("canvas"); c56.width=c56.height=56;
-  c56.getContext("2d").drawImage(c,0,0,56,56);
-  const c28=document.createElement("canvas"); c28.width=c28.height=28;
-  c28.getContext("2d").drawImage(c56,0,0,28,28);
-  n.spr=[c28,c56,c];
+  g.strokeStyle=hexA(col,.95); g.lineWidth=4;
+  g.beginPath(); g.arc(m,m,SPR_R-1.5,0,TAU); g.stroke();
+  // мип-уровни, чтобы не масштабировать крупный спрайт в мелочь каждый кадр
+  const c72=document.createElement("canvas"); c72.width=c72.height=72;
+  c72.getContext("2d").drawImage(c,0,0,72,72);
+  const c36=document.createElement("canvas"); c36.width=c36.height=36;
+  c36.getContext("2d").drawImage(c72,0,0,36,36);
+  n.spr=[c36,c72,c];
 }
-function sprMip(spr,dw){return dw>=80?spr[2]:dw>=36?spr[1]:spr[0];}
-const DOT=64, DOT_R=17;
+// выбор мип-уровня по ФИЗИЧЕСКИМ пикселям (dw уже умножен на DPR)
+function sprMip(spr,dwDev){return dwDev>=100?spr[2]:dwDev>=48?spr[1]:spr[0];}
+const DOT=96, DOT_R=25.5;
 const dotSprites={};
 for(const k of CKEYS){
   const c=document.createElement("canvas"); c.width=c.height=DOT;
@@ -844,8 +856,12 @@ function simTick(){
    ============================================================ */
 const ripples=[];
 let revealed=0;
+let decorAt=0; // когда проявлять названия галактик (после «врат»)
 function scheduleBloom(){
   const t0=performance.now()+(RM?0:600);
+  decorAt=RM?0:t0+2600;
+  for(const g of GALAXIES) g.appear=RM?1:0;
+  coreDecorA=RM?1:0;
   const waves={};
   nodes.forEach(n=>{(waves[n.depth]=waves[n.depth]||[]).push(n);});
   const perWave=Math.max(240,Math.min(750,9000/(MAXD+1)));
@@ -1001,7 +1017,7 @@ const lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 function rank(s){return s>=8.6?"S":s>=8.0?"A":s>=7.3?"B":s>=6.5?"C":"D";}
 
 async function fetchScore(n){
-  const key="animap2:sc:"+n.slug;
+  const key="animap3:sc:"+n.slug;
   const c=lsGet(key);
   if(c){try{return JSON.parse(c)}catch(e){}}
   const q=(n.orig||n.ru).slice(0,90);
@@ -1009,7 +1025,8 @@ async function fetchScore(n){
   if(!r.ok) throw 0;
   const j=await r.json();
   const d=j.data&&j.data[0];
-  const v={s:(d&&d.score)||0};
+  const jpg=d&&d.images&&d.images.jpg;
+  const v={s:(d&&d.score)||0, i:(jpg&&(jpg.large_image_url||jpg.image_url))||""};
   lsSet(key,JSON.stringify(v));
   return v;
 }
@@ -1066,6 +1083,15 @@ function select(n){
       sv.textContent="★ "+v.s.toFixed(1);
       requestAnimationFrame(()=>{sb.style.width=Math.min(100,Math.max(4,(v.s-5)/4.5*100)).toFixed(0)+"%";});
     } else {badge.textContent="—"; sv.textContent="—";}
+    // подменяем постер 186px на HD-версию с MAL, когда она догрузится
+    if(v.i){
+      const im=document.querySelector("#panelBody .poster img");
+      if(im){
+        const hi=new Image();
+        hi.onload=()=>{ if(selectedN===me&&im.isConnected) im.src=v.i; };
+        hi.src=v.i;
+      }
+    }
   }).catch(()=>{
     if(selectedN!==me) return;
     const badge=document.getElementById("rankBadge"), sv=document.getElementById("scoreVal");
@@ -1144,6 +1170,7 @@ document.getElementById("replay").onclick=()=>{
    ОТРИСОВКА
    ============================================================ */
 let dashOff=0;
+let coreDecorA=0;
 const easeOutBack=t=>{const c=1.70158;return 1+(c+1)*Math.pow(t-1,3)+c*Math.pow(t-1,2);};
 
 function draw(now){
@@ -1161,42 +1188,49 @@ function draw(now){
   const cx=w2sX(0), cy=w2sY(0);
 
   // галактики: ореол, пунктирная граница, название
+  // (появляются после «врата открываются»)
   ctx.save();
   ctx.textAlign="center";
   for(const g of GALAXIES){
+    if(g.appear<1 && now>=decorAt) g.appear=Math.min(1,g.appear+.025);
+    if(g.appear<=0) continue;
+    const ga=g.appear;
     const gx=w2sX(g.x), gy=w2sY(g.y), R=g.R*cam.s;
     if(gx+R<-140||gx-R>W+140||gy+R<-140||gy-R>H+140) continue;
     const gr=ctx.createRadialGradient(gx,gy,R*.15,gx,gy,R);
-    gr.addColorStop(0,hexA(g.color,.05));
-    gr.addColorStop(.85,hexA(g.color,.015));
+    gr.addColorStop(0,hexA(g.color,.05*ga));
+    gr.addColorStop(.85,hexA(g.color,.015*ga));
     gr.addColorStop(1,hexA(g.color,0));
     ctx.fillStyle=gr;
     ctx.beginPath(); ctx.arc(gx,gy,R,0,TAU); ctx.fill();
-    ctx.strokeStyle=hexA(g.color,.22); ctx.lineWidth=1.1;
+    ctx.strokeStyle=hexA(g.color,.22*ga); ctx.lineWidth=1.1;
     ctx.setLineDash([10,12]); ctx.lineDashOffset=RM?0:now/70;
     ctx.beginPath(); ctx.arc(gx,gy,R,0,TAU); ctx.stroke();
     ctx.setLineDash([]);
     if(R>36){
       const fs=Math.max(11,Math.min(42,R*.14));
       ctx.font=fs+"px 'Russo One',sans-serif";
-      ctx.fillStyle=hexA(g.color,.55);
+      ctx.fillStyle=hexA(g.color,.55*ga);
       ctx.fillText(g.name.toUpperCase(),gx,gy-R-10);
       ctx.font=Math.max(8,fs*.42)+"px 'JetBrains Mono',monospace";
-      ctx.fillStyle=hexA(g.color,.38);
+      ctx.fillStyle=hexA(g.color,.38*ga);
       ctx.fillText(g.count+" тайтлов",gx,gy-R-10+fs*.58);
     }
   }
-  // кольцо ядра
-  const coreR=820*cam.s;
-  ctx.strokeStyle="rgba(251,191,36,.25)"; ctx.lineWidth=1.2;
-  ctx.setLineDash([6,9]); ctx.lineDashOffset=RM?0:-now/80;
-  ctx.beginPath(); ctx.arc(cx,cy,coreR,0,TAU); ctx.stroke();
-  ctx.setLineDash([]);
-  if(coreR>50){
-    const cf=Math.max(10,Math.min(30,coreR*.06));
-    ctx.font=cf+"px 'Russo One',sans-serif";
-    ctx.fillStyle="rgba(251,191,36,.42)";
-    ctx.fillText("ЛЕГЕНДЫ",cx,cy-coreR-10);
+  // кольцо ядра — тоже после «врат»
+  if(coreDecorA<1 && now>=decorAt) coreDecorA=Math.min(1,coreDecorA+.025);
+  if(coreDecorA>0){
+    const coreR=820*cam.s;
+    ctx.strokeStyle=`rgba(251,191,36,${.25*coreDecorA})`; ctx.lineWidth=1.2;
+    ctx.setLineDash([6,9]); ctx.lineDashOffset=RM?0:-now/80;
+    ctx.beginPath(); ctx.arc(cx,cy,coreR,0,TAU); ctx.stroke();
+    ctx.setLineDash([]);
+    if(coreR>50){
+      const cf=Math.max(10,Math.min(30,coreR*.06));
+      ctx.font=cf+"px 'Russo One',sans-serif";
+      ctx.fillStyle=`rgba(251,191,36,${.42*coreDecorA})`;
+      ctx.fillText("ЛЕГЕНДЫ",cx,cy-coreR-10);
+    }
   }
   ctx.restore();
 
@@ -1308,7 +1342,7 @@ function draw(now){
         ctx.drawImage(dotSprites[n.c],x-dd/2,yy-dd/2,dd,dd);
         ctx.globalAlpha=a*n.imgA;
       }
-      ctx.drawImage(sprMip(n.spr,dw),x-dw/2,yy-dw/2,dw,dw);
+      ctx.drawImage(sprMip(n.spr,dw*DPR),x-dw/2,yy-dw/2,dw,dw);
     } else {
       const dd=r/DOT_R*DOT;
       ctx.drawImage(dotSprites[n.c],x-dd/2,yy-dd/2,dd,dd);
@@ -1358,6 +1392,7 @@ function draw(now){
    ГЛАВНЫЙ ЦИКЛ
    ============================================================ */
 function loop(now){
+  if(DPR!==Math.min(devicePixelRatio||1,3)) resize();
   if(fly){
     let t=Math.min(1,(now-fly.t0)/fly.ms);
     t=1-Math.pow(1-t,3);
