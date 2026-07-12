@@ -1207,14 +1207,16 @@ function draw(now){
     ctx.setLineDash([10,12]); ctx.lineDashOffset=RM?0:now/70;
     ctx.beginPath(); ctx.arc(gx,gy,R,0,TAU); ctx.stroke();
     ctx.setLineDash([]);
-    if(R>36){
-      const fs=13; // единый размер подписи для всех галактик
+    const mobL=W<=720;
+    if(R>(mobL?28:36)){
+      // единый размер подписи; на телефоне — мельче
+      const fs=mobL?10:13;
       ctx.font=fs+"px 'Russo One',sans-serif";
       ctx.fillStyle=hexA(g.color,.6*ga);
-      ctx.fillText(g.name.toUpperCase(),gx,gy-R-10);
-      ctx.font="9px 'JetBrains Mono',monospace";
+      ctx.fillText(g.name.toUpperCase(),gx,gy-R-8);
+      ctx.font=(mobL?8:9)+"px 'JetBrains Mono',monospace";
       ctx.fillStyle=hexA(g.color,.42*ga);
-      ctx.fillText(g.count+" тайтлов",gx,gy-R-10+fs*.85);
+      ctx.fillText(g.count+" тайтлов",gx,gy-R-8+fs*.85);
     }
   }
   // кольцо ядра — тоже после «врат»
