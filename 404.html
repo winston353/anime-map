@@ -27,7 +27,7 @@
   html,body{height:100%}
   body{
     background:
-      radial-gradient(1100px 700px at 50% 38%, #131a3a 0%, transparent 62%),
+      radial-gradient(1100px 700px at 50% 40%, #131a3a 0%, transparent 62%),
       var(--void);
     color:var(--ink);font-family:var(--body);
     -webkit-font-smoothing:antialiased;
@@ -45,83 +45,88 @@
   .eyebrow{
     font-family:var(--mono);font-size:10px;letter-spacing:.34em;
     color:var(--arcane-soft);text-transform:uppercase;
-    display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;
+    display:flex;align-items:center;justify-content:center;gap:10px;
+    position:relative;z-index:3;
   }
   .eyebrow::before,.eyebrow::after{content:"";width:26px;height:1px;background:var(--arcane)}
 
-  .code{
-    display:flex;align-items:center;justify-content:center;
-    gap:clamp(8px,2.5vw,28px);
-    line-height:1;user-select:none;
-  }
-  .code .four{
-    font-family:var(--display);
-    font-size:clamp(70px,20vw,240px);
-    color:#eef1ff;
-    text-shadow:0 0 34px rgba(139,92,246,.65), 0 0 90px rgba(139,92,246,.3);
-  }
-  .zero{
-    height:min(clamp(200px,46vh,460px),70vw);
-    aspect-ratio:0.62;
-    border-radius:50%;
-    overflow:hidden;
-    border:3px solid var(--gold);
-    box-shadow:
-      0 0 0 3px rgba(251,191,36,.18),
-      0 0 44px rgba(251,191,36,.35),
-      0 0 110px rgba(139,92,246,.4);
+  /* герой: огромные цифры позади, персонаж поверх */
+  .hero{
     position:relative;
-    flex:none;
+    height:min(clamp(280px,54vh,560px),96vw);
+    display:flex;align-items:center;justify-content:center;
+    margin-top:4px;
   }
-  .zero img{
-    width:100%;height:100%;object-fit:cover;object-position:center 18%;
-    display:block;
+  .big{
+    font-family:var(--display);
+    font-size:min(clamp(170px,34vh,360px),42vw);
+    line-height:1;letter-spacing:.04em;
+    color:rgba(167,139,250,.14);
+    text-shadow:0 0 70px rgba(139,92,246,.35);
+    user-select:none;
+    position:relative;z-index:1;
   }
-  .zero::after{
-    content:"";position:absolute;inset:0;border-radius:50%;
-    box-shadow:inset 0 0 60px rgba(139,92,246,.22);
-    pointer-events:none;
+  .glow{
+    position:absolute;left:50%;bottom:0;translate:-50% 12%;
+    width:min(70vh,90vw);height:min(70vh,90vw);
+    background:
+      radial-gradient(circle at 50% 62%, rgba(251,191,36,.14) 0%, transparent 46%),
+      radial-gradient(circle at 50% 55%, rgba(139,92,246,.30) 0%, transparent 62%);
+    z-index:2;pointer-events:none;
   }
+  .chara{
+    position:absolute;left:50%;bottom:0;translate:-50%;
+    height:92%;
+    z-index:3;
+    filter:drop-shadow(0 0 30px rgba(139,92,246,.5)) drop-shadow(0 0 90px rgba(251,191,36,.18));
+    -webkit-mask-image:linear-gradient(180deg,#000 82%,transparent 99%);
+    mask-image:linear-gradient(180deg,#000 82%,transparent 99%);
+    animation:float 6s ease-in-out infinite;
+  }
+  @keyframes float{50%{transform:translateY(-8px)}}
 
   h1{
     font-family:var(--display);
     font-size:clamp(17px,4.4vw,30px);
-    letter-spacing:.3em;margin-top:26px;color:#eef1ff;text-transform:uppercase;
+    letter-spacing:.3em;margin-top:18px;color:#eef1ff;text-transform:uppercase;
     text-shadow:0 0 24px rgba(139,92,246,.55);
-    padding-left:.3em; /* компенсация трекинга */
+    padding-left:.3em;
+    position:relative;z-index:3;
   }
   .sub{
     margin-top:12px;font-size:clamp(12.5px,3.4vw,14.5px);color:var(--muted);line-height:1.65;
     max-width:440px;margin-left:auto;margin-right:auto;
+    position:relative;z-index:3;
   }
   .sub b{color:var(--gold);font-weight:600}
   .back{
     display:inline-flex;align-items:center;gap:10px;
-    margin-top:26px;padding:13px 30px;text-decoration:none;
+    margin-top:24px;padding:13px 30px;text-decoration:none;
     font-family:var(--mono);font-size:12px;letter-spacing:.22em;color:#0a0d1c;
     background:linear-gradient(120deg,var(--arcane-soft),var(--mana));
     clip-path:polygon(10px 0,100% 0,100% calc(100% - 10px),calc(100% - 10px) 100%,0 100%,0 10px);
     transition:filter .2s, transform .15s;
+    position:relative;z-index:3;
   }
   .back:hover{filter:brightness(1.15);transform:translateY(-1px)}
   .path{
-    margin-top:18px;font-family:var(--mono);font-size:10px;color:#4d5a80;letter-spacing:.08em;
+    margin-top:16px;font-family:var(--mono);font-size:10px;color:#4d5a80;letter-spacing:.08em;
     max-width:90vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
     margin-left:auto;margin-right:auto;
   }
 
   @media (max-width:480px){
     h1{letter-spacing:.16em;font-size:clamp(15px,4.6vw,22px);padding-left:.16em}
-    .code{gap:clamp(6px,1.6vw,28px)}
   }
   @media (max-height:640px){
-    .zero{height:min(clamp(170px,40vh,300px),70vw)}
-    h1{margin-top:16px}
-    .back{margin-top:18px}
+    .hero{height:min(46vh,96vw)}
+    h1{margin-top:12px}
+    .back{margin-top:16px}
   }
   @media (prefers-reduced-motion: reduce){
     .wrap{animation:none}
     #stars i{animation:none}
+    .chara{animation:none}
   }
 </style>
 </head>
@@ -129,10 +134,10 @@
 <div id="stars"></div>
 <div class="wrap">
   <div class="eyebrow">Система // Ошибка 404</div>
-  <div class="code">
-    <span class="four">4</span>
-    <span class="zero"><img src="/404.jpg" alt="0"></span>
-    <span class="four">4</span>
+  <div class="hero">
+    <div class="big">404</div>
+    <div class="glow"></div>
+    <img class="chara" src="/404.png" alt="">
   </div>
   <h1>Врата не найдены</h1>
   <p class="sub">Такой страницы нет в этой вселенной — возможно, её поглотил разлом.<br>
