@@ -738,7 +738,8 @@ const cv=document.getElementById("cv");
 const ctx=cv.getContext("2d");
 let W=0,H=0,DPR=1;
 function resize(){
-  DPR=Math.min(devicePixelRatio||1,3);
+  // минимум 2x — суперсэмплинг для чётких надписей на обычных мониторах
+  DPR=Math.min(Math.max(devicePixelRatio||1,2),3);
   W=innerWidth; H=innerHeight;
   cv.width=W*DPR; cv.height=H*DPR;
   cv.style.width=W+"px"; cv.style.height=H+"px";
@@ -1755,7 +1756,7 @@ function draw(now){
    ГЛАВНЫЙ ЦИКЛ
    ============================================================ */
 function loop(now){
-  if(DPR!==Math.min(devicePixelRatio||1,3)) resize();
+  if(DPR!==Math.min(Math.max(devicePixelRatio||1,2),3)) resize();
   if(fly){
     let t=Math.min(1,(now-fly.t0)/fly.ms);
     t=1-Math.pow(1-t,3);
